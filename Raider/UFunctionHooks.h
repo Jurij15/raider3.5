@@ -148,6 +148,33 @@ namespace UFunctionHooks
             return false;
         })
 
+        DEFINE_PEHOOK("Function Engine.Actor.ReceiveDestroyed", { // TODO: Figure out why this function gets called a few seconds late. Possibly use a different one.
+            auto Actor = (AActor*)Object;
+
+            if (Actor)
+            {
+                if (Actor->IsA(ABuildingSMActor::StaticClass()))
+                {
+                    for (int i = 0; i < ExistingBuildings.size(); i++)
+                    {
+                        auto Building = ExistingBuildings[i];
+
+                        if (!Building)
+                            continue;
+
+                        if (Building == Actor)
+                        {
+                            ExistingBuildings.erase(ExistingBuildings.begin() + i);
+
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        })
+
         DEFINE_PEHOOK("Function FortniteGame.FortPlayerController.ServerCreateBuildingActor", {
             auto PC = (AFortPlayerControllerAthena*)Object;
 
@@ -156,25 +183,20 @@ namespace UFunctionHooks
 
             if (PC && Params && CurrentBuildClass)
             {
+                auto BuildingActor = (ABuildingSMActor*)Spawners::SpawnActor(CurrentBuildClass, Params->BuildLoc, Params->BuildRot, PC, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+                if (BuildingActor && CanBuild(BuildingActor))
                 {
-                    auto BuildingActor = (ABuildingSMActor*)Spawners::SpawnActor(CurrentBuildClass, Params->BuildLoc, Params->BuildRot, PC, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
-                    // SpawnBuilding(CurrentBuildClass, Params->BuildLoc, Params->BuildRot, (APlayerPawn_Athena_C*)PC->Pawn);
-                    if (BuildingActor && CanBuild2(BuildingActor))
-                    {
-                        // Buildings.insert(BuildingActor); // Add as soon as possible to make sure there is no time to double build.
-
-                        BuildingActor->DynamicBuildingPlacementType = EDynamicBuildingPlacementType::DestroyAnythingThatCollides;
-                        BuildingActor->SetMirrored(Params->bMirrored);
-                        // BuildingActor->PlacedByPlacementTool();
-                        BuildingActor->InitializeKismetSpawnedBuildingActor(BuildingActor, PC);
-                        auto PlayerState = (AFortPlayerStateAthena*)PC->PlayerState;
-                        BuildingActor->Team = PlayerState->TeamIndex;
-                    }
-                    else
-                    {
-                        BuildingActor->SetActorScale3D({});
-                        BuildingActor->SilentDie();
-                    }
+                    BuildingActor->DynamicBuildingPlacementType = EDynamicBuildingPlacementType::DestroyAnythingThatCollides;
+                    BuildingActor->SetMirrored(Params->bMirrored);
+                    // BuildingActor->PlacedByPlacementTool();
+                    BuildingActor->InitializeKismetSpawnedBuildingActor(BuildingActor, PC);
+                    auto PlayerState = (AFortPlayerStateAthena*)PC->PlayerState;
+                    BuildingActor->Team = PlayerState->TeamIndex;
+                }
+                else
+                {
+                    BuildingActor->SetActorScale3D({});
+                    BuildingActor->SilentDie();
                 }
             }
 
@@ -230,7 +252,9 @@ namespace UFunctionHooks
                     {
                         switch (yaw)
                         {
-                        case 89: case 90: case 91: // Sometimes the rotation may differ by 1
+                        case 89:
+                        case 90:
+                        case 91: // Sometimes the rotation may differ by 1
                             switch (RotationIterations)
                             {
                             case 1:
@@ -246,7 +270,9 @@ namespace UFunctionHooks
                             }
                             yaw = 90;
                             break;
-                        case 179: case 180: case 181:
+                        case 179:
+                        case 180:
+                        case 181:
                             switch (RotationIterations)
                             {
                             case 1:
@@ -262,7 +288,9 @@ namespace UFunctionHooks
                             }
                             yaw = 180;
                             break;
-                        case 269: case 270: case 271:
+                        case 269:
+                        case 270:
+                        case 271:
                             switch (RotationIterations)
                             {
                             case 1:
@@ -300,7 +328,6 @@ namespace UFunctionHooks
 
                     auto HealthPercent = BuildingActor->GetHealthPercent();
 
-                    //  BuildingActor->K2_DestroyActor();
                     BuildingActor->SilentDie();
 
                     if (auto NewBuildingActor = (ABuildingSMActor*)Spawners::SpawnActor(NewBuildingClass, location, rotation, PC))
@@ -326,51 +353,65 @@ namespace UFunctionHooks
 
             auto DeadPC = static_cast<AFortPlayerControllerAthena*>(Object);
             auto DeadPlayerState = static_cast<AFortPlayerStateAthena*>(DeadPC->PlayerState);
-            
-            Game::Mode->OnPlayerKilled(DeadPC);
-            
-            if (!Game::Mode->isRespawnEnabled()) {
-                auto GameState = reinterpret_cast<AAthena_GameState_C*>(GetWorld()->GameState);
-                GameState->PlayersLeft--;
-                GameState->OnRep_PlayersLeft();
 
-                if (Params && DeadPC)
+            auto GameState = reinterpret_cast<AAthena_GameState_C*>(GetWorld()->GameState);
+            auto playerLeftBeforeKill = GameState->PlayersLeft;
+            if (Params && DeadPC)
+            {
+                auto GameMode = static_cast<AFortGameModeAthena*>(GameState->AuthorityGameMode);
+                auto KillerPlayerState = static_cast<AFortPlayerStateAthena*>(Params->DeathReport.KillerPlayerState);
+
+                Spawners::SpawnActor<ABP_VictoryDrone_C>(DeadPC->Pawn->K2_GetActorLocation())->PlaySpawnOutAnim();
+
+                FDeathInfo DeathData;
+                DeathData.bDBNO = false;
+                DeathData.DeathLocation = DeadPC->Pawn->K2_GetActorLocation();
+                DeathData.Distance = Params->DeathReport.KillerPawn ? Params->DeathReport.KillerPawn->GetDistanceTo(DeadPC->Pawn) : 0;
+
+                DeathData.DeathCause = Game::GetDeathCause(Params->DeathReport);
+                DeathData.FinisherOrDowner = KillerPlayerState ? KillerPlayerState : DeadPlayerState;
+
+                DeadPlayerState->DeathInfo = DeathData;
+                DeadPlayerState->OnRep_DeathInfo();
+
+                if (KillerPlayerState)
                 {
-                    auto GameMode = static_cast<AFortGameModeAthena*>(GameState->AuthorityGameMode);
-                    auto KillerPlayerState = static_cast<AFortPlayerStateAthena*>(Params->DeathReport.KillerPlayerState);
-                    GameState->PlayerArray.RemoveSingle(DeadPC->NetPlayerIndex);
-
-                    Spawners::SpawnActor<ABP_VictoryDrone_C>(DeadPC->Pawn->K2_GetActorLocation())->PlaySpawnOutAnim();
-
-                    FDeathInfo DeathData;
-                    DeathData.bDBNO = false;
-                    DeathData.DeathLocation = DeadPC->Pawn->K2_GetActorLocation();
-                    DeathData.Distance = Params->DeathReport.KillerPawn ? Params->DeathReport.KillerPawn->GetDistanceTo(DeadPC->Pawn) : 0;
-
-                    DeathData.DeathCause = Game::GetDeathCause(Params->DeathReport);
-                    DeathData.FinisherOrDowner = KillerPlayerState ? KillerPlayerState : DeadPlayerState;
-
-                    DeadPC->Pawn->K2_DestroyActor();
-
-                    DeadPlayerState->DeathInfo = DeathData;
-                    DeadPlayerState->OnRep_DeathInfo();
-
-                    if (KillerPlayerState)
+                    if (auto Controller = static_cast<AFortPlayerControllerPvP*>(Params->DeathReport.KillerPawn->Controller))
                     {
-                        if (auto Controller = static_cast<AFortPlayerControllerPvP*>(Params->DeathReport.KillerPawn->Controller))
-                        {
-                            Controller->ClientReceiveKillNotification(KillerPlayerState, DeadPlayerState);
-                        }
-                        
-                        KillerPlayerState->KillScore++;
-                        KillerPlayerState->TeamKillScore++;
-
-                        KillerPlayerState->ClientReportKill(DeadPlayerState);
-                        KillerPlayerState->OnRep_Kills();
-
-                        Spectate(DeadPC->NetConnection, KillerPlayerState);
+                        Controller->ClientReceiveKillNotification(KillerPlayerState, DeadPlayerState);
                     }
 
+                    KillerPlayerState->KillScore++;
+                    KillerPlayerState->TeamKillScore++;
+
+                    KillerPlayerState->ClientReportKill(DeadPlayerState);
+                    KillerPlayerState->OnRep_Kills();
+
+                    //   Spectate(DeadPC->NetConnection, KillerPlayerState);
+                }
+
+                DeadPC->ForceNetUpdate();
+                if (IsCurrentlyDisconnecting(DeadPC->NetConnection))
+                {
+                    LOG_INFO("{} is currently disconnecting", DeadPlayerState->GetPlayerName().ToString());
+                }
+                
+                Game::Mode->OnPlayerKilled(DeadPC);
+                
+                if (!Game::Mode->isRespawnEnabled() || IsCurrentlyDisconnecting(DeadPC->NetConnection))
+                {
+                    GameState->PlayersLeft--;
+                    GameState->OnRep_PlayersLeft();
+                    GameState->PlayerArray.RemoveSingle(DeadPC->NetPlayerIndex);
+                }
+                
+                if (!Game::Mode->isRespawnEnabled() && KillerPlayerState)
+                {
+                    Spectate(DeadPC->NetConnection, KillerPlayerState);
+                }
+
+                if (playerLeftBeforeKill != 1)
+                {
                     if (GameState->PlayersLeft == 1 && bStartedBus)
                     {
                         TArray<AFortPlayerPawn*> OutActors;
@@ -410,12 +451,12 @@ namespace UFunctionHooks
                         OutActors.FreeArray();
                     }
                 }
-                else
-                {
-                    LOG_ERROR("Parameters of ClientOnPawnDied were invalid!");
-                }
             }
-            
+            else
+            {
+                LOG_ERROR("Parameters of ClientOnPawnDied were invalid!");
+            }
+
             return false;
         })
 
@@ -467,9 +508,9 @@ namespace UFunctionHooks
                 {
                     auto ExitLocation = Aircraft->K2_GetActorLocation();
 
-                    // ExitLocation.Z -= 500;
-
                     Game::Mode->InitPawn(PC, ExitLocation);
+
+                    PC->ClientSetRotation(Params->ClientRotation, false);
 
                     ((AAthena_GameState_C*)GetWorld()->AuthorityGameMode->GameState)->Aircrafts[0]->PlayEffectsForPlayerJumped();
                     PC->ActivateSlot(EFortQuickBars::Primary, 0, 0, true); // Select the pickaxe
@@ -479,8 +520,6 @@ namespace UFunctionHooks
 
                     if (bFound)
                         Inventory::EquipInventoryItem(PC, PickaxeEntry.ItemGuid);
-
-                    // PC->Pawn->K2_TeleportTo(ExitLocation, Params->ClientRotation);
                 }
             }
 
@@ -664,7 +703,9 @@ namespace UFunctionHooks
         })
 
         DEFINE_PEHOOK("Function FortniteGame.FortPlayerController.ServerReturnToMainMenu", {
-            ((AFortPlayerController*)Object)->ClientTravel(L"Frontend", ETravelType::TRAVEL_Absolute, false, FGuid());
+            auto PC = (AFortPlayerController*)Object;
+            PC->bIsDisconnecting = true;
+            PC->ClientTravel(L"Frontend", ETravelType::TRAVEL_Absolute, false, FGuid());
 
             return false;
         })
@@ -767,6 +808,13 @@ namespace UFunctionHooks
             //     KickController((AFortPlayerControllerAthena*)Object, L"Please do not do that!");
 
             return true;
+        })
+        
+        DEFINE_PEHOOK("Function Engine.GameMode.Logout", {
+            auto PC = (AFortPlayerController*)Object;
+            if (PC) PC->bIsDisconnecting = true;
+            
+            return false;
         })
 
         LOG_INFO("Hooked {} UFunction(s)!", toHook.size());

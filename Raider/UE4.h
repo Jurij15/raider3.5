@@ -14,7 +14,7 @@ inline bool bPlayButton = false;
 inline bool bListening = false;
 static bool bSpawnedFloorLoot = false;
 
-static std::unordered_set<ABuildingSMActor*> Buildings;
+static std::vector<ABuildingActor*> ExistingBuildings;
 static AFortOnlineBeaconHost* HostBeacon = nullptr;
 
 inline UWorld* GetWorld()
@@ -90,56 +90,37 @@ inline auto CreateCheatManager(APlayerController* Controller)
 
 bool CanBuild(ABuildingSMActor* BuildingActor)
 {
-    /*
-    FBuildingGridActorFilter filter { true, true, true, true};
-    FBuildingNeighboringActorInfo OutActors;
-    GameState->StructuralSupportSystem->K2_GetBuildingActorsInGridCell(Location, filter, &OutActors);
-    auto Amount = OutActors.NeighboringCenterCellInfos.Num() + OutActors.NeighboringFloorInfos.Num() + OutActors.NeighboringWallInfos.Num();
-    if (Amount == 0)
-        return true; */
+    bool bCanBuild = true;
 
-    for (const auto Building : Buildings)
+    for (auto Building : ExistingBuildings)
     {
-        if (!Building) // || Building->bDestroyed)
-        {
-            Buildings.erase(Building);
+        if (!Building)
             continue;
-        }
 
-        if (Building->bDestroyed)
+        if (Building->K2_GetActorLocation() == BuildingActor->K2_GetActorLocation() && Building->BuildingType == BuildingActor->BuildingType)
         {
-            Buildings.erase(Building);
-            break;
-        }
-
-        if (Building->K2_GetActorLocation() == BuildingActor->K2_GetActorLocation()) // If we use a vector of locations, I do not know how to track if the actor has been destroyed. // Maybe we could use a map so we dont get the location everytime
-        {
-            // if (!BuildingClass->IsA(APBWA_W1_StairW_C::StaticClass()) || (BuildingClass->IsA(APBWA_W1_StairW_C::StaticClass()) && Building->BuildingType == EFortBuildingType::Stairs))
-            {
-                return false;
-            }
+            bCanBuild = false;
         }
     }
+    
+    if (bCanBuild || ExistingBuildings.size() == 0)
+    {
+        ExistingBuildings.push_back(BuildingActor);
 
-    return true;
-}
-
-bool CanBuild2(ABuildingSMActor* BuildingActor)
-{
-    static auto GameState = reinterpret_cast<AAthena_GameState_C*>(GetWorld()->GameState);
-
-    TArray<ABuildingActor*> ExistingBuildings;
-    EFortStructuralGridQueryResults bCanBuild = GameState->StructuralSupportSystem->K2_CanAddBuildingActorToGrid(GetWorld(), BuildingActor, BuildingActor->K2_GetActorLocation(), BuildingActor->K2_GetActorRotation(), false, false, &ExistingBuildings);
-
-    if (bCanBuild == EFortStructuralGridQueryResults::CanAdd || ExistingBuildings.Num() == 0)
         return true;
+    }
 
     return false;
 }
 
 bool IsCurrentlyDisconnecting(UNetConnection* Connection)
 {
-    return false;
+    if (!Connection || IsBadReadPtr(Connection, sizeof(Connection))) return true;
+    
+    auto PC = (AFortPlayerController*)Connection->PlayerController;
+    if (!PC || IsBadReadPtr(PC, sizeof(PC))) return true;
+    
+    return PC->bIsDisconnecting;
 }
 
 void SwapPlayerControllers(APlayerController* OldPC, APlayerController* NewPC)

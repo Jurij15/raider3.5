@@ -1,4 +1,5 @@
 #pragma once
+
 #include "../ue4.h"
 #include "../SDK.hpp"
 #include "../Logic/Teams.h"
@@ -15,13 +16,17 @@ public:
 class AbstractGameModeBase : protected IGameModeBase
 {
 public:
-    AbstractGameModeBase(const std::string BasePlaylist, bool bRespawnEnabled = false, int maxTeamSize = 1, bool bRegenEnabled = false)
+    AbstractGameModeBase(const std::string BasePlaylist, bool bRespawnEnabled = false, int maxTeamSize = 1, bool bRegenEnabled = false, bool bRejoinEnabled = false)
     {
         this->BasePlaylist = UObject::FindObject<UFortPlaylistAthena>(BasePlaylist);
 
         this->BasePlaylist->bNoDBNO = maxTeamSize > 1;
         this->bRespawnEnabled = bRespawnEnabled;
-	    this->bRegenEnabled = bRegenEnabled;
+        this->bRegenEnabled = bRegenEnabled;
+        this->bRejoinEnabled = bRejoinEnabled;
+        
+        /* Rejoin can be disabled for certain gamemodes only. To do this, leave the rejoin bool as false, go to the file of the gamemode you want to play (e.g. Playground), and find the line that says "AbstractGameModeBase(PlaylistName, true, 1)"
+        Change it to "AbstractGameModeBase(PlaylistName, true, 1, true)". Now you have rejoins enabled for Playground */
 
         if (bRespawnEnabled)
         {
@@ -45,15 +50,21 @@ public:
     {
         GetWorld()->GameState->AuthorityGameMode->ResetLevel();
     }
-    
-    bool isRespawnEnabled() {
+
+    bool isRespawnEnabled()
+    {
         return this->bRespawnEnabled;
     }
 
-    void LoadKilledPlayer(AFortPlayerControllerAthena* Controller, FVector Spawn = {500, 500, 500})
+    void LoadKilledPlayer(AFortPlayerControllerAthena* Controller, FVector Spawn = { 500, 500, 500 })
     {
         if (this->bRespawnEnabled)
         {
+            if (Controller->Pawn)
+            {
+                Controller->Pawn->K2_DestroyActor();
+            }
+
             InitPawn(Controller, Spawn);
             Controller->ActivateSlot(EFortQuickBars::Primary, 0, 0, true);
 
@@ -70,6 +81,12 @@ public:
 
     void LoadJoiningPlayer(AFortPlayerControllerAthena* Controller)
     {
+        if (bStartedBus && !bRejoinEnabled) {
+            KickController(Controller, L"The match has already been started, please try again later.");
+            LOG_INFO("{} attempted to join while re-join was off.", Controller->PlayerState->GetPlayerName().ToString());
+            return;
+        }
+
         LOG_INFO("({}) Initializing {} that has just joined!", "GameModeBase", Controller->PlayerState->GetPlayerName().ToString());
 
         auto Pawn = Spawners::SpawnActor<APlayerPawn_Athena_C>(GetPlayerStart(Controller).Translation, Controller, {});
@@ -83,14 +100,15 @@ public:
         Controller->OnRep_Pawn();
         Controller->Possess(Pawn);
 
-        Pawn->HealthSet->Health.Minimum = this->maxHealth;
-        Pawn->HealthSet->CurrentShield.Minimum = this->maxShield;
+        Pawn->HealthSet->Health.Minimum = 0;
+        Pawn->HealthSet->CurrentShield.Minimum = 0;
 
         Pawn->SetMaxHealth(this->maxHealth);
         Pawn->SetMaxShield(this->maxShield);
-        
+
         Pawn->bCanBeDamaged = bStartedBus;
 
+        Controller->bIsDisconnecting = false;
         Controller->bHasClientFinishedLoading = true;
         Controller->bHasServerFinishedLoading = true;
         Controller->bHasInitiallySpawned = true;
@@ -139,17 +157,25 @@ public:
 
     virtual void OnPlayerKilled(AFortPlayerControllerAthena* Controller) override
     {
-        if (Controller && !Controller->bIsDisconnecting && this->bRespawnEnabled)
+        if (Controller && !IsCurrentlyDisconnecting(Controller->NetConnection) && this->bRespawnEnabled)
         {
+            LOG_INFO("Trying to respawn {}", Controller->PlayerState->GetPlayerName().ToString());
             // -Kyiro TO-DO: See if most of this code is even needed but it does work
-            FVector RespawnPos = Controller->Pawn ? Controller->Pawn->K2_GetActorLocation() : FVector(0, 0, 0);
-            RespawnPos.Z += 8000;
-            
+            FVector RespawnPos = Controller->Pawn ? Controller->Pawn->K2_GetActorLocation() : FVector(10000, 10000, 10000);
+            RespawnPos.Z += 3000;
+
             this->LoadKilledPlayer(Controller, RespawnPos);
             Controller->RespawnPlayerAfterDeath();
-            
-            Controller->Pawn->K2_TeleportTo(RespawnPos, FRotator {0, 0, 0});
-            
+
+            if (Controller->Pawn->K2_TeleportTo(RespawnPos, FRotator { 0, 0, 0 }))
+            {
+                Controller->Character->CharacterMovement->SetMovementMode(EMovementMode::MOVE_Custom, 4);
+            }
+            else
+            {
+                LOG_ERROR("Failed to teleport {}", Controller->PlayerState->GetPlayerName().ToString())
+            }
+
             // auto CheatManager = static_cast<UFortCheatManager*>(Controller->CheatManager);
             // CheatManager->RespawnPlayerServer();
             // CheatManager->RespawnPlayer();
@@ -193,8 +219,9 @@ public:
 
         Pawn->SetMaxHealth(this->maxHealth);
         Pawn->SetMaxShield(this->maxShield);
-	
-        if (this->bRegenEnabled) { 
+
+        if (!this->bRegenEnabled)
+        {
             Pawn->AbilitySystemComponent->RemoveActiveGameplayEffectBySourceEffect(Pawn->HealthRegenDelayGameplayEffect, Pawn->AbilitySystemComponent, 1);
             Pawn->AbilitySystemComponent->RemoveActiveGameplayEffectBySourceEffect(Pawn->HealthRegenGameplayEffect, Pawn->AbilitySystemComponent, 1);
             Pawn->AbilitySystemComponent->RemoveActiveGameplayEffectBySourceEffect(Pawn->ShieldRegenDelayGameplayEffect, Pawn->AbilitySystemComponent, 1);
@@ -242,6 +269,7 @@ private:
     int maxShield = 100;
     bool bRespawnEnabled = false;
     bool bRegenEnabled = false;
+    bool bRejoinEnabled = false;
 
     UFortPlaylistAthena* BasePlaylist;
 };

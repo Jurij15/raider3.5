@@ -42,6 +42,29 @@ namespace Hooks
     uint64 GetNetMode(UWorld*) { return NM_ListenServer; }
     void World_NotifyControlMessage(UWorld*, UNetConnection* Connection, uint8 MessageType, void* Bunch) { Native::World::NotifyControlMessage(GetWorld(), Connection, MessageType, Bunch); }
 
+    void __fastcall GetPlayerViewPoint(APlayerController* pc, FVector* a2, FRotator* a3)
+    {
+        if (pc && HostBeacon && HostBeacon->NetDriver && HostBeacon->NetDriver->ClientConnections.Num() > 0)
+        {
+            AActor* TheViewTarget = pc->GetViewTarget();
+
+            if (TheViewTarget)
+            {
+                if (a2)
+                    *a2 = TheViewTarget->K2_GetActorLocation();
+                if (a3)
+                    *a3 = TheViewTarget->K2_GetActorRotation();
+                // LOG_INFO("Did the ViewTarget!");
+
+                return;
+            }
+            else
+                LOG_INFO("Unable to get ViewTarget!");
+        }
+        else
+            return Native::PlayerController::GetPlayerViewPoint(pc, a2, a3);
+    }
+
     APlayerController* SpawnPlayActor(UWorld*, UPlayer* NewPlayer, ENetRole RemoteRole, FURL& URL, void* UniqueId, FString& Error, uint8 NetPlayerIndex)
     {
         auto PlayerController = static_cast<AFortPlayerControllerAthena*>(Native::World::SpawnPlayActor(GetWorld(), NewPlayer, RemoteRole, URL, UniqueId, Error, NetPlayerIndex));
