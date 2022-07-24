@@ -107,6 +107,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
+    <ClInclude Include="..\..\..\..\Desktop\FortniteStuff\raider3.5-4.1\Raider\Logic\Inventory.h" />
     <ClInclude Include="GameModes\GameModeBase.hpp" />
     <ClCompile Include="SDK\FN_Athena_PlayerController_functions.cpp" />
     <ClCompile Include="SDK\FN_Basic.cpp" />
@@ -129,6 +130,9 @@
     <ClInclude Include="GUI.h" />
     <ClInclude Include="Hooks.h" />
     <ClInclude Include="Logger.hpp" />
+    <ClInclude Include="Logic\Game.h" />
+    <ClInclude Include="Logic\Spawners.h" />
+    <ClInclude Include="Loot.h" />
     <ClInclude Include="Native.h" />
     <ClInclude Include="Patterns.h" />
     <ClInclude Include="SDK.hpp" />

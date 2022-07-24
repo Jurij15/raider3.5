@@ -65,9 +65,6 @@
       <Filter>UE4</Filter>
     </ClInclude>
     <ClInclude Include="Util.h" />
-    <ClInclude Include="Patterns.h">
-      <Filter>UE4</Filter>
-    </ClInclude>
     <ClInclude Include="Native.h" />
     <ClInclude Include="Game.h">
       <Filter>Game</Filter>
@@ -97,6 +94,19 @@
     <ClInclude Include="GameModes\GameModes.hpp" />
     <ClInclude Include="GameModes\GameModeLateGame.hpp">
       <Filter>Game\Modes</Filter>
+    </ClInclude>
+    <ClInclude Include="Logic\Game.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Loot.h" />
+    <ClInclude Include="Logic\Spawners.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Patterns.h">
+      <Filter>UE4\Hooks</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\Desktop\FortniteStuff\raider3.5-4.1\Raider\Logic\Inventory.h">
+      <Filter>Game</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
