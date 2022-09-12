@@ -7,12 +7,24 @@
 #include "Logic/Abilities.h"
 #include "UE4.h"
 #include "Logger.hpp"
+#include "Util.h"
 #include <unordered_set>
 #include <random>
 
 #include "Util.h"
 #include "json.hpp"
 #include "Native.h"
+
+// cr: ozne
+template <typename T>
+static T* FindObjectFast(std::string ObjectName, UClass* Class = UObject::StaticClass())
+{
+    auto OrigInName = std::wstring(ObjectName.begin(), ObjectName.end()).c_str();
+
+    static auto StaticFindObjectAddr = Utils::FindPattern("48 89 5C 24 ? 48 89 74 24 ? 55 57 41 54 41 56 41 57 48 8B EC 48 83 EC 60 80 3D ? ? ? ? ? 45 0F B6 F1");
+    auto StaticFindObject = (T * (*)(UClass*, UObject * Package, const wchar_t* OrigInName, bool ExactClass))(StaticFindObjectAddr);
+    return StaticFindObject(Class, nullptr, OrigInName, false);
+}
 
 /*
 std::vector<std::string> Consumables = {
@@ -129,7 +141,7 @@ std::vector<std::string> Weapons = {
 };
 */
 
-std::vector<std::string> Consumables = {
+std::vector<std::string> ConsumablesStrings = {
     "/Game/Athena/Items/Consumables/Shields/Athena_Shields.Athena_Shields",
     "/Game/Athena/Items/Consumables/ShieldSmall/Athena_ShieldSmall.Athena_ShieldSmall",
     "/Game/Athena/Items/Consumables/PurpleStuff/Athena_PurpleStuff.Athena_PurpleStuff",
@@ -144,7 +156,7 @@ std::vector<std::string> Consumables = {
     "/Game/Athena/Items/Consumables/SmokeGrenade/Athena_SmokeGrenade.Athena_SmokeGrenade"
 };
 
-std::vector<std::string> Weapons = {
+std::vector<std::string> WeaponsStrings = {
     "/Game/Athena/Items/Weapons/WID_Assault_AutoHigh_Athena_SR_Ore_T03.WID_Assault_AutoHigh_Athena_SR_Ore_T03",
     "/Game/Athena/Items/Weapons/WID_Assault_AutoHigh_Athena_VR_Ore_T03.WID_Assault_AutoHigh_Athena_VR_Ore_T03",
     "/Game/Athena/Items/Weapons/WID_Assault_Auto_Athena_R_Ore_T03.WID_Assault_Auto_Athena_R_Ore_T03",
@@ -176,17 +188,52 @@ std::vector<std::string> Weapons = {
     "/Game/Athena/Items/Weapons/WID_Pistol_SemiAuto_Athena_R_Ore_T03.WID_Pistol_SemiAuto_Athena_R_Ore_T03",
 };
 
-static auto DropRandomConsumable(auto location)
+namespace Looting
 {
-    using namespace Spawners;
-    srand((unsigned int)time(NULL));
-    auto def = Consumables[rand() % Consumables.size()];
-    SummonPickupFromChest(FindWIDForChestFast<UFortItemDefinition>(def), 1, location);
-}
-static auto DropRandomWeapon(auto location) 
-{
-    using namespace Spawners;
-    srand((unsigned int)time(NULL));
-    auto def = Weapons[rand() % Weapons.size()];
-    SummonPickupFromChest(FindWIDForChestFast<UFortItemDefinition>(def), 1, location);
+    std::vector<UFortItemDefinition*> Weapons;
+    std::vector<UFortItemDefinition*> Consumables;
+    
+    static void Init() {
+        
+        for (int i = 0; i < WeaponsStrings.size(); i++)
+        {
+            auto item = FindObjectFast<UFortItemDefinition>(WeaponsStrings[i]);
+            if (item)
+                Weapons.push_back(item);
+        }
+
+        for (int i = 0; i < ConsumablesStrings.size(); i++)
+        {
+            auto item = FindObjectFast<UFortItemDefinition>(ConsumablesStrings[i]);
+            if (item)
+                Weapons.push_back(item);
+        }
+    }
+
+    static UFortItemDefinition* GetRandomWeapon()
+    {
+        srand((unsigned int)time(NULL));
+        return Weapons[rand() % Weapons.size()];
+    }
+
+    static UFortItemDefinition* GetRandomConsumable()
+    {
+        srand((unsigned int)time(NULL));
+        return Consumables[rand() % Consumables.size()];
+    }
+
+    static auto DropRandomConsumable(auto location)
+    {
+        using namespace Spawners;
+        srand((unsigned int)time(NULL));
+        auto def = ConsumablesStrings[rand() % Consumables.size()];
+        SummonPickupFromChest(FindObjectFast<UFortItemDefinition>(def), 1, location);
+    }
+    static auto DropRandomWeapon(auto location)
+    {
+        using namespace Spawners;
+        srand((unsigned int)time(NULL));
+        auto def = WeaponsStrings[rand() % Weapons.size()];
+        SummonPickupFromChest(FindObjectFast<UFortItemDefinition>(def), 1, location);
+    }
 }

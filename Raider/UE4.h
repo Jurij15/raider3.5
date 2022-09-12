@@ -13,6 +13,8 @@ inline bool bTraveled = false;
 inline bool bPlayButton = false;
 inline bool bListening = false;
 static bool bSpawnedFloorLoot = false;
+static bool bChestLoot = true;
+static bool bStartingLoadout = false;
 
 static std::vector<ABuildingActor*> ExistingBuildings;
 static AFortOnlineBeaconHost* HostBeacon = nullptr;

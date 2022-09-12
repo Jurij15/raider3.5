@@ -7,6 +7,7 @@
 #include "Logic/Spawners.h"
 #include "Logic/Abilities.h"
 #include "UE4.h"
+#include "Loot.h"
 
 // #define LOGGING
 //#define CHEATS
@@ -508,7 +509,24 @@ namespace UFunctionHooks
                     auto Container = (ABuildingContainer*)Params->ReceivingActor;
 
                     Container->bAlreadySearched = true;
+                    Container->bStartAlreadySearched_Athena = true;
                     Container->OnRep_bAlreadySearched();
+
+                    auto location = Container->K2_GetActorLocation();
+
+                    if (Params->ReceivingActor->GetFullName().find("Chest") != -1)
+                    {
+                        if (bChestLoot)
+                        {
+                            //Spawners::SummonPickupFromChest(Looting::GetRandomWeapon, 1, location);
+                            //Spawners::SummonPickupFromChest(Looting::GetRandomConsumable, 1, location);
+                            Looting::DropRandomConsumable(Container->K2_GetActorLocation());
+                            Looting::DropRandomWeapon(Container->K2_GetActorLocation());
+                        }
+                    }
+
+                    ///DropRandomConsumable(Container->K2_GetActorLocation());
+                    //DropRandomWeapon(Container->K2_GetActorLocation());
 
                     /*
                      * Loot Tier Groups:

@@ -141,12 +141,20 @@ public:
         }
 
         Inventory::Init(Controller);
-        Inventory::EquipLoadout(Controller, this->GetPlaylistLoadout());
+        if (bStartingLoadout)
+        {
+            Inventory::EquipLoadout(Controller, this->GetPlaylistLoadout());
+        }
+        else if (!bStartingLoadout)
+        {
+            Inventory::EquipLoadout(Controller, this->PickaxeOnly());
+        }
         Abilities::ApplyAbilities(Pawn);
-
+        //FindWID("WID_Harvest_Pickaxe_Athena_C_T01"),
         auto Drone = Spawners::SpawnActor<ABP_VictoryDrone_C>(Controller->K2_GetActorLocation());
         Drone->InitDrone();
         Drone->TriggerPlayerSpawnEffects();
+
 
         OnPlayerJoined(Controller);
     }
@@ -185,12 +193,20 @@ public:
     virtual PlayerLoadout& GetPlaylistLoadout()
     {
         static PlayerLoadout Ret = {
-            FindWID("WID_Harvest_Pickaxe_Athena_C_T01"),
             FindWID("WID_Shotgun_Standard_Athena_UC_Ore_T03"), // Blue Pump
             FindWID("WID_Shotgun_Standard_Athena_UC_Ore_T03"), // Blue Pump
             FindWID("WID_Assault_AutoHigh_Athena_SR_Ore_T03"), // Gold AR
             FindWID("WID_Sniper_BoltAction_Scope_Athena_R_Ore_T03"), // Blue Bolt Action
             FindWID("Athena_Shields") // Big Shield Potion
+        };
+
+        return Ret;
+    }
+
+        virtual PlayerLoadout& PickaxeOnly()
+    {
+        static PlayerLoadout Ret = {
+            FindWID("WID_Harvest_Pickaxe_Athena_C_T01")
         };
 
         return Ret;

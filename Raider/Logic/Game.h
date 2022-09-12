@@ -5,7 +5,7 @@ static bool bStartedBus = false;
 #include "UE4.h"
 #include "GameModes/GameModes.hpp"
 
-typedef GameModeSolos CurrentGameMode;
+typedef GameModePlayground CurrentGameMode;
 
 namespace Game
 {

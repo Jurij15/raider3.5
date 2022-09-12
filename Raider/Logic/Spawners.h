@@ -74,7 +74,7 @@ namespace Spawners
         auto FortPickup = SpawnActor<AFortPickup>(Location);
 
         FortPickup->bReplicates = true; // should be autmoatic but eh
-        FortPickup->bTossedFromContainer = true;
+        //FortPickup->bTossedFromContainer = true;
 
         FortPickup->PrimaryPickupItemEntry.Count = Count;
         FortPickup->PrimaryPickupItemEntry.ItemDefinition = ItemDef;
