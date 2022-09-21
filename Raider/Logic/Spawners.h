@@ -74,13 +74,23 @@ namespace Spawners
         auto FortPickup = SpawnActor<AFortPickup>(Location);
 
         FortPickup->bReplicates = true; // should be autmoatic but eh
-        //FortPickup->bTossedFromContainer = true;
+        // FortPickup->bTossedFromContainer = true;
 
         FortPickup->PrimaryPickupItemEntry.Count = Count;
         FortPickup->PrimaryPickupItemEntry.ItemDefinition = ItemDef;
 
+        FortPickup->PickupLocationData.FlyTime = 0.40f;
+        FortPickup->PickupLocationData.bPlayPickupSound = true; //idk what this does
+        //credits to ozraider for this
+        auto WeaponWid = (UFortWeaponItemDefinition*)FortPickup->PrimaryPickupItemEntry.ItemDefinition;
+        auto ActorClass = (AFortWeapon*)WeaponWid->GetWeaponActorClass();
+        FortPickup->PrimaryPickupItemEntry.LoadedAmmo = ActorClass->GetBulletsPerClip();
+        FortPickup->OnRep_PickupLocationData();
+        FortPickup->bRandomRotation = true;
+
         FortPickup->OnRep_PrimaryPickupItemEntry();
-        FortPickup->OnRep_TossedFromContainer();
+        FortPickup->TossPickup(Location, nullptr, 6, true);
+        //FortPickup->OnRep_TossedFromContainer();
     }
 
     static void SpawnPickupFromFloorLoot(auto ItemDef, int Count, FVector Location)

@@ -5,6 +5,7 @@
 #include "../Logic/Teams.h"
 #include "../Logic/Inventory.h"
 #include "../Logic/Abilities.h"
+#include "Loot.h"
 
 class IGameModeBase
 {
@@ -141,16 +142,18 @@ public:
         }
 
         Inventory::Init(Controller);
+        Inventory::EquipLoadout(Controller, this->GetPlaylistLoadout());
+        /*-
         if (bStartingLoadout)
         {
             Inventory::EquipLoadout(Controller, this->GetPlaylistLoadout());
         }
         else if (!bStartingLoadout)
         {
-            Inventory::EquipLoadout(Controller, this->PickaxeOnly());
+            Inventory::AddItemToSlot(Controller, Looting::pickaxe, 0);
         }
+        */
         Abilities::ApplyAbilities(Pawn);
-        //FindWID("WID_Harvest_Pickaxe_Athena_C_T01"),
         auto Drone = Spawners::SpawnActor<ABP_VictoryDrone_C>(Controller->K2_GetActorLocation());
         Drone->InitDrone();
         Drone->TriggerPlayerSpawnEffects();
@@ -193,6 +196,7 @@ public:
     virtual PlayerLoadout& GetPlaylistLoadout()
     {
         static PlayerLoadout Ret = {
+            FindWID("WID_Harvest_Pickaxe_Athena_C_T01"),
             FindWID("WID_Shotgun_Standard_Athena_UC_Ore_T03"), // Blue Pump
             FindWID("WID_Shotgun_Standard_Athena_UC_Ore_T03"), // Blue Pump
             FindWID("WID_Assault_AutoHigh_Athena_SR_Ore_T03"), // Gold AR
@@ -203,7 +207,7 @@ public:
         return Ret;
     }
 
-        virtual PlayerLoadout& PickaxeOnly()
+    virtual PlayerLoadout& PickaxeOnly()
     {
         static PlayerLoadout Ret = {
             FindWID("WID_Harvest_Pickaxe_Athena_C_T01")

@@ -143,8 +143,10 @@ namespace Hooks
                 LOG_INFO("Initializing the game.");
                 Game::Start();
 
+                /*
                 LOG_INFO("Initializing looting.");
                 Looting::Init();
+                */
 
                 LOG_INFO("Initializing Network Hooks.");
                 InitNetworkHooks();
