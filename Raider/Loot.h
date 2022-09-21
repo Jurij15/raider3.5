@@ -120,4 +120,67 @@ namespace Looting
         auto def = WeaponsStrings[rand() % WeaponsStrings.size()];
         SummonPickupFromChest(FindObjectFast<UFortItemDefinition>(def), 1, location);
     }
+
+    static int GetReloadedAmmoData(auto definition) 
+    {
+        auto WeaponWid = (UFortWeaponItemDefinition*)definition;
+        auto fullwid = WeaponWid->GetFullName();
+
+        if (fullwid.find("WID_Assault_Auto"))
+        {
+            return 30;
+        }
+        if (fullwid.find("WID_Assault_SemiAuto"))
+	    {
+		    return 30;
+	    }
+        if (fullwid.find("WID_Shotgun_Standard"))
+	    {
+		    return 5;
+	    }
+        if (fullwid.find("WID_Shotgun_SemiAuto"))
+        {
+            return 5;
+        }
+        if (fullwid.find("WID_Shotgun_SlugFire"))
+        {
+            return 7;
+        }
+        if (fullwid.find("WID_Sniper_BoltAction"))
+        {
+            return 1;
+        }
+        if (fullwid.find("WID_Sniper_Standard"))
+        {
+            return 7;
+        }
+        if (fullwid.find("WID_Pistol_HandCannon"))
+        {
+            return 7;
+        }
+        if (fullwid.find("WID_Pistol_Scavenger"))
+        {
+            return 30;
+        }
+        if (fullwid.find("WID_Pistol_AutoHeavy"))
+        {
+            return 35;
+        }
+        if (fullwid.find("WID_Pistol_SemiAuto"))
+        {
+            return 16;
+        }
+        if (fullwid.find("WID_Pistol_SixShooter"))
+        {
+            return 16;
+        }
+        if (fullwid.find("WID_Launcher_Rocket"))
+	    {
+		 return 1;
+	    }
+        if (fullwid.find("WID_Launcher_Grenade"))
+        {
+            return 6;
+        }
+    }
 }

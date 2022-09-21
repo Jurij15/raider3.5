@@ -143,7 +143,7 @@ public:
 
         Inventory::Init(Controller);
         Inventory::EquipLoadout(Controller, this->GetPlaylistLoadout());
-        /*-
+        /* this prevents the dll from working
         if (bStartingLoadout)
         {
             Inventory::EquipLoadout(Controller, this->GetPlaylistLoadout());

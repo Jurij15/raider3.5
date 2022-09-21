@@ -2,6 +2,69 @@
 #include "../UE4.h"
 #include "Abilities.h"
 
+static int GetReloadedAmmoData(auto definition)
+{
+    auto WeaponWid = (UFortWeaponItemDefinition*)definition;
+    auto fullwid = WeaponWid->GetFullName();
+
+    if (fullwid.find("WID_Assault_Auto"))
+    {
+        return 30;
+    }
+    if (fullwid.find("WID_Assault_SemiAuto"))
+    {
+        return 30;
+    }
+    if (fullwid.find("WID_Shotgun_Standard"))
+    {
+        return 5;
+    }
+    if (fullwid.find("WID_Shotgun_SemiAuto"))
+    {
+        return 5;
+    }
+    if (fullwid.find("WID_Shotgun_SlugFire"))
+    {
+        return 7;
+    }
+    if (fullwid.find("WID_Sniper_BoltAction"))
+    {
+        return 1;
+    }
+    if (fullwid.find("WID_Sniper_Standard"))
+    {
+        return 7;
+    }
+    if (fullwid.find("WID_Pistol_HandCannon"))
+    {
+        return 7;
+    }
+    if (fullwid.find("WID_Pistol_Scavenger"))
+    {
+        return 30;
+    }
+    if (fullwid.find("WID_Pistol_AutoHeavy"))
+    {
+        return 35;
+    }
+    if (fullwid.find("WID_Pistol_SemiAuto"))
+    {
+        return 16;
+    }
+    if (fullwid.find("WID_Pistol_SixShooter"))
+    {
+        return 16;
+    }
+    if (fullwid.find("WID_Launcher_Rocket"))
+    {
+        return 1;
+    }
+    if (fullwid.find("WID_Launcher_Grenade"))
+    {
+        return 6;
+    }
+}
+
 namespace Spawners
 {
     static AActor* SpawnActor(UClass* StaticClass, FTransform SpawnTransform, AActor* Owner = nullptr, ESpawnActorCollisionHandlingMethod Flags = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn)
@@ -79,16 +142,16 @@ namespace Spawners
         FortPickup->PrimaryPickupItemEntry.Count = Count;
         FortPickup->PrimaryPickupItemEntry.ItemDefinition = ItemDef;
 
-        FortPickup->PickupLocationData.FlyTime = 0.40f;
-        FortPickup->PickupLocationData.bPlayPickupSound = true; //idk what this does
         //credits to ozraider for this
         auto WeaponWid = (UFortWeaponItemDefinition*)FortPickup->PrimaryPickupItemEntry.ItemDefinition;
         auto ActorClass = (AFortWeapon*)WeaponWid->GetWeaponActorClass();
-        FortPickup->PrimaryPickupItemEntry.LoadedAmmo = ActorClass->GetBulletsPerClip();
-        FortPickup->OnRep_PickupLocationData();
+        FortPickup->PrimaryPickupItemEntry.LoadedAmmo = GetReloadedAmmoData(ItemDef);
         FortPickup->bRandomRotation = true;
-
         FortPickup->OnRep_PrimaryPickupItemEntry();
+
+        FortPickup->PickupLocationData.FlyTime = 0.40f;
+        FortPickup->PickupLocationData.bPlayPickupSound = true; // idk what this does
+        FortPickup->OnRep_PickupLocationData();
         FortPickup->TossPickup(Location, nullptr, 6, true);
         //FortPickup->OnRep_TossedFromContainer();
     }
@@ -151,5 +214,4 @@ namespace Spawners
             }
         }
     }
-
 }
